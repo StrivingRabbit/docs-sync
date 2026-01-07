@@ -6,3 +6,7 @@ dist
 # Test artifacts
 .test-*
 coverage
+
+# Output directory
+output/
+docs/

@@ -10,6 +10,23 @@ export function prepareRepo(
   cacheDir: string,
   fs: FsOps
 ) {
+  // 检查是否是本地路径（绝对路径或相对路径）
+  const isLocalPath = repo.startsWith('/') || repo.startsWith('./') || repo.startsWith('../');
+
+  if (isLocalPath) {
+    // 本地路径，直接返回
+    const absolutePath = path.isAbsolute(repo) ? repo : path.resolve(process.cwd(), repo);
+
+    if (!fs.exists(absolutePath)) {
+      logger.error(`Local path does not exist: ${absolutePath}`);
+      throw new Error(`Local path does not exist: ${absolutePath}`);
+    }
+
+    logger.info(`Using local source: ${key} -> ${absolutePath}`);
+    return absolutePath;
+  }
+
+  // Git 仓库，使用现有逻辑
   const dir = path.join(cacheDir, key);
 
   try {
