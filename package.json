@@ -1,6 +1,6 @@
 {
 	"name": "docs-sync-cli",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "A documentation synchronization tool for pulling content from multiple Git repositories or local directories and compiling them into your local project",
 	"keywords": [
 		"docs",
@@ -40,10 +40,10 @@
 		"test": "vitest",
 		"test:run": "vitest run",
 		"test:coverage": "vitest run --coverage",
-    "publish:patch": "npm version patch && npm publish",
-    "publish:minor": "npm version minor && npm publish",
-    "publish:major": "npm version major  && npm publish",
-    "postpublish": "cnpm sync docs-sync-cli",
+		"publish:patch": "npm version patch && npm publish",
+		"publish:minor": "npm version minor && npm publish",
+		"publish:major": "npm version major  && npm publish",
+		"postpublish": "cnpm sync docs-sync-cli",
 		"prepublishOnly": "npm run test:run && npm run build"
 	},
 	"dependencies": {
