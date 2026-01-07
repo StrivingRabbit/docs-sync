@@ -68,6 +68,13 @@ describe('DepGraph', () => {
     graph.addDep('target3', 'target5');
     graph.addDep('target4', 'target5');
 
+    // Visualize the graph
+    console.log('\n=== Complex Dependency Chain ===');
+    console.log(graph.visualize());
+    console.log('\n=== Mermaid Format ===');
+    console.log(graph.toMermaid());
+    console.log('');
+
     const affected = graph.affected('common:a.md');
     expect(affected.size).toBe(5);
     expect(affected.has('target1')).toBe(true);
@@ -83,6 +90,13 @@ describe('DepGraph', () => {
     graph.addDep('a', 'b');
     graph.addDep('b', 'c');
     graph.addDep('c', 'a');
+
+    // Visualize the circular dependency
+    console.log('\n=== Circular Dependency (a -> b -> c -> a) ===');
+    console.log(graph.visualize());
+    console.log('\n=== Mermaid Format ===');
+    console.log(graph.toMermaid());
+    console.log('');
 
     const affected = graph.affected('a');
     expect(affected.size).toBe(3);
@@ -106,6 +120,13 @@ describe('DepGraph', () => {
     // Tree 2: b -> target2
     graph.addDep('b', 'target2');
 
+    // Visualize independent trees
+    console.log('\n=== Multiple Independent Trees ===');
+    console.log(graph.visualize());
+    console.log('\n=== Mermaid Format ===');
+    console.log(graph.toMermaid());
+    console.log('');
+
     const affectedA = graph.affected('a');
     expect(affectedA.size).toBe(1);
     expect(affectedA.has('target1')).toBe(true);
@@ -115,5 +136,28 @@ describe('DepGraph', () => {
     expect(affectedB.size).toBe(1);
     expect(affectedB.has('target2')).toBe(true);
     expect(affectedB.has('target1')).toBe(false);
+  });
+
+  it('should visualize empty graph', () => {
+    const graph = new DepGraph();
+
+    expect(graph.visualize()).toBe('(empty graph)');
+    expect(graph.toMermaid()).toContain('empty[Empty Graph]');
+  });
+
+  it('should visualize simple dependency', () => {
+    const graph = new DepGraph();
+    graph.addDep('source.md', 'target.md');
+
+    const visualization = graph.visualize();
+    expect(visualization).toContain('source.md');
+    expect(visualization).toContain('target.md');
+    expect(visualization).toContain('└─');
+
+    const mermaid = graph.toMermaid();
+    expect(mermaid).toContain('graph TD');
+    expect(mermaid).toContain('source.md');
+    expect(mermaid).toContain('target.md');
+    expect(mermaid).toContain('-->');
   });
 });
