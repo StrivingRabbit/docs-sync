@@ -1,10 +1,18 @@
 {
 	"name": "@docs-sync/cli",
 	"version": "0.0.0",
+	"type": "module",
+	"main": "dist/src/config.js",
+	"types": "dist/src/config.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/src/config.d.ts",
+			"import": "./dist/src/config.js"
+		}
+	},
 	"bin": {
 		"docs-sync": "dist/bin/docs-sync.js"
 	},
-	"type": "module",
 	"scripts": {
 		"build": "tsc",
 		"dev": "ts-node bin/docs-sync.ts",

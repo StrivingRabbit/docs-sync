@@ -3,9 +3,18 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 import { syncAll, watch } from '../src/engine';
 import { logger } from '../src/logger';
+import { existsSync } from 'fs';
 
-async function loadConfig() {
-  const configPath = path.resolve('docs-sync.config.ts');
+async function loadConfig(customPath?: string) {
+  // Use custom path if provided, otherwise look for default config in cwd
+  const configPath = customPath
+    ? path.resolve(customPath)
+    : path.resolve(process.cwd(), 'docs-sync.config.ts');
+
+  if (!existsSync(configPath)) {
+    logger.error(`Config file not found: ${configPath}`);
+    process.exit(1);
+  }
 
   try {
     const mod = await import(pathToFileURL(configPath).href);
@@ -16,37 +25,78 @@ async function loadConfig() {
   }
 }
 
-const args = process.argv.slice(2);
-const cmd = args[0];
-const flags = args.slice(1);
+function parseArgs(args: string[]) {
+  const parsed: {
+    command?: string;
+    config?: string;
+    dryRun: boolean;
+    debug: boolean;
+  } = {
+    dryRun: false,
+    debug: false,
+  };
 
-if (!cmd) {
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg === '--config' || arg === '-c') {
+      parsed.config = args[++i];
+    } else if (arg === '--dry-run') {
+      parsed.dryRun = true;
+    } else if (arg === '--debug') {
+      parsed.debug = true;
+    } else if (!parsed.command) {
+      parsed.command = arg;
+    }
+  }
+
+  return parsed;
+}
+
+const args = process.argv.slice(2);
+const options = parseArgs(args);
+
+if (!options.command) {
   logger.error('No command specified. Use "sync" or "watch"');
+  logger.info('');
+  logger.info('Usage:');
+  logger.info('  docs-sync <command> [options]');
+  logger.info('');
+  logger.info('Commands:');
+  logger.info('  sync      Sync documents once');
+  logger.info('  watch     Watch for changes and sync automatically');
+  logger.info('');
+  logger.info('Options:');
+  logger.info('  -c, --config <path>   Path to config file (default: docs-sync.config.ts)');
+  logger.info('  --dry-run             Preview changes without writing files');
+  logger.info('  --debug               Enable debug logging');
   process.exit(1);
 }
 
-const config = await loadConfig();
+const config = await loadConfig(options.config);
 
-// Check for --dry-run flag
-if (flags.includes('--dry-run')) {
+// Apply command-line flags
+if (options.dryRun) {
   config.dryRun = true;
   logger.warn('Running in DRY-RUN mode (no files will be written)');
 }
 
-// Check for --debug flag
-if (flags.includes('--debug')) {
+if (options.debug) {
   process.env.DEBUG = 'true';
 }
 
 logger.info(`Site: ${config.site}`);
 logger.info(`Cache directory: ${config.cacheDir}`);
+if (options.config) {
+  logger.info(`Config file: ${path.resolve(options.config)}`);
+}
 
-if (cmd === 'sync') {
+if (options.command === 'sync') {
   await syncAll(config);
   logger.success(config.dryRun ? 'Dry-run completed' : 'Docs synced successfully');
 }
 
-if (cmd === 'watch') {
+if (options.command === 'watch') {
   await watch(config);
   logger.info('Watching for changes...');
 }
