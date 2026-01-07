@@ -9,10 +9,12 @@ export function resolveIncludes(
   sourcePaths: Record<string, string>,
   site: string,
   deps: Set<string>,
-  fs: FsOps
+  fs: FsOps,
+  includeStack: Set<string> = new Set()
 ) {
   return content.replace(INCLUDE_RE, (_, ref) => {
     const [sourceKey, relPath] = ref.trim().split(':');
+    const includeRef = `${sourceKey}:${relPath}`;
     const sourceBaseDir = sourcePaths[sourceKey];
 
     if (!sourceBaseDir) {
@@ -28,12 +30,25 @@ export function resolveIncludes(
       return `<!-- ERROR: Include file not found: ${ref} -->`;
     }
 
+    // 检测循环引用：只检查当前调用栈，而不是所有依赖
+    if (includeStack.has(includeRef)) {
+      logger.error(`Circular include detected: ${ref}`);
+      return `<!-- ERROR: Circular include detected: ${ref} -->`;
+    }
+
     logger.debug(`Including: ${ref}`);
-    deps.add(`${sourceKey}:${relPath}`);
+    deps.add(includeRef);
 
     try {
       let included = fs.readFileSync(file);
       included = included.replace(/^---[\s\S]*?---/, '');
+
+      // 递归处理被包含文件中的 @include 指令
+      // 将当前文件加入调用栈
+      const newStack = new Set(includeStack);
+      newStack.add(includeRef);
+      included = resolveIncludes(included, sourcePaths, site, deps, fs, newStack);
+
       return included.trim();
     } catch (error) {
       logger.error(`Failed to read include file ${ref}: ${error}`);

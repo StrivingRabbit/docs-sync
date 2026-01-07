@@ -153,6 +153,49 @@ npm run watch
 <!-- @include common:snippets/warning.md -->
 ```
 
+**嵌套支持:**
+
+`@include` 指令支持递归嵌套。被包含的文件中也可以包含 `@include` 指令,系统会自动递归处理。
+
+**示例:**
+
+`common:snippets/warning.md`:
+```markdown
+> **⚠️ 警告**: 请仔细阅读以下内容
+<!-- @include common:snippets/note.md -->
+```
+
+`common:snippets/note.md`:
+```markdown
+**注意**: 这是一个重要提示
+```
+
+**结果:**
+```markdown
+> **⚠️ 警告**: 请仔细阅读以下内容
+**注意**: 这是一个重要提示
+```
+
+**多次引用 vs 循环引用:**
+
+- ✅ **多次引用**(合法): 同一个文件可以在不同的位置被多次包含
+  ```markdown
+  <!-- @include common:note.md -->
+  Some content
+  <!-- @include common:note.md -->  <!-- 合法,允许重复引用 -->
+  ```
+
+- ❌ **循环引用**(非法): 形成 A→B→A 的引用链
+  ```markdown
+  // a.md: <!-- @include common:b.md -->
+  // b.md: <!-- @include common:a.md -->  <!-- 非法,形成循环 -->
+  ```
+
+系统使用**调用栈**检测循环引用,只在当前包含链中检查重复。如果检测到循环引用,会在生成的文档中插入错误提示:
+```markdown
+<!-- ERROR: Circular include detected: common:circular.md -->
+```
+
 ### @site
 
 根据站点有条件地包含内容：

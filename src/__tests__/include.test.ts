@@ -165,4 +165,92 @@ Actual content`;
     expect(deps.has('common:b.md')).toBe(true);
     expect(deps.has('other:c.md')).toBe(true);
   });
+
+  it('should handle nested includes recursively', () => {
+    const content = '<!-- @include common:parent.md -->';
+
+    vi.mocked(mockFs.exists).mockReturnValue(true);
+    vi.mocked(mockFs.readFileSync)
+      // First call: parent.md contains another include
+      .mockReturnValueOnce('Parent content\n<!-- @include common:child.md -->\nMore parent')
+      // Second call: child.md is plain content
+      .mockReturnValueOnce('Child content');
+
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
+
+    expect(result).toContain('Parent content');
+    expect(result).toContain('Child content');
+    expect(result).toContain('More parent');
+    expect(result).not.toContain('@include');
+    expect(deps.has('common:parent.md')).toBe(true);
+    expect(deps.has('common:child.md')).toBe(true);
+    expect(mockFs.readFileSync).toHaveBeenCalledTimes(2);
+  });
+
+  it('should handle deeply nested includes', () => {
+    const content = '<!-- @include common:level1.md -->';
+
+    vi.mocked(mockFs.exists).mockReturnValue(true);
+    vi.mocked(mockFs.readFileSync)
+      .mockReturnValueOnce('Level 1\n<!-- @include common:level2.md -->')
+      .mockReturnValueOnce('Level 2\n<!-- @include common:level3.md -->')
+      .mockReturnValueOnce('Level 3 content');
+
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
+
+    expect(result).toContain('Level 1');
+    expect(result).toContain('Level 2');
+    expect(result).toContain('Level 3 content');
+    expect(deps.has('common:level1.md')).toBe(true);
+    expect(deps.has('common:level2.md')).toBe(true);
+    expect(deps.has('common:level3.md')).toBe(true);
+    expect(mockFs.readFileSync).toHaveBeenCalledTimes(3);
+  });
+
+  it('should detect circular includes', () => {
+    const content = '<!-- @include common:circular.md -->';
+
+    vi.mocked(mockFs.exists).mockReturnValue(true);
+    // The file includes itself (or already in deps)
+    vi.mocked(mockFs.readFileSync).mockReturnValue(
+      'Content\n<!-- @include common:circular.md -->'
+    );
+
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
+
+    expect(result).toContain('Content');
+    expect(result).toContain('ERROR: Circular include detected: common:circular.md');
+    expect(deps.has('common:circular.md')).toBe(true);
+  });
+
+  it('should allow same file to be included multiple times from different branches', () => {
+    const content = `<!-- @include common:parent1.md -->
+<!-- @include common:parent2.md -->`;
+
+    vi.mocked(mockFs.exists).mockReturnValue(true);
+    vi.mocked(mockFs.readFileSync)
+      // parent1.md includes shared.md
+      .mockReturnValueOnce('Parent 1\n<!-- @include common:shared.md -->')
+      // shared.md from parent1
+      .mockReturnValueOnce('Shared content')
+      // parent2.md also includes shared.md
+      .mockReturnValueOnce('Parent 2\n<!-- @include common:shared.md -->')
+      // shared.md from parent2
+      .mockReturnValueOnce('Shared content');
+
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
+
+    // Should not report circular include error
+    expect(result).not.toContain('ERROR: Circular include detected');
+    expect(result).toContain('Parent 1');
+    expect(result).toContain('Parent 2');
+    // Shared content should appear twice
+    const matches = result.match(/Shared content/g);
+    expect(matches).toHaveLength(2);
+    // All files should be tracked as dependencies
+    expect(deps.has('common:parent1.md')).toBe(true);
+    expect(deps.has('common:parent2.md')).toBe(true);
+    expect(deps.has('common:shared.md')).toBe(true);
+    expect(mockFs.readFileSync).toHaveBeenCalledTimes(4);
+  });
 });
