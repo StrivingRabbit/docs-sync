@@ -12,7 +12,7 @@ export function resolveIncludes(
   fs: FsOps
 ) {
   return content.replace(INCLUDE_RE, (_, ref) => {
-    const [sourceKey, relPath] = ref.split(':');
+    const [sourceKey, relPath] = ref.trim().split(':');
     const file = path.join(cacheDir, sourceKey, relPath);
 
     if (!fs.exists(file)) {

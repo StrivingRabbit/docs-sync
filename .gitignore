@@ -2,3 +2,7 @@ node_modules
 dist
 .docs-sync-cache
 *.log
+
+# Test artifacts
+.test-*
+coverage
