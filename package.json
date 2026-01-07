@@ -1,27 +1,46 @@
 {
 	"name": "@docs-sync/cli",
-	"version": "0.0.0",
-	"type": "commonjs",
-	"publishConfig": {
-		"access": "public"
+	"version": "1.0.0",
+	"description": "A documentation synchronization tool for pulling content from multiple Git repositories or local directories and compiling them into your local project",
+	"keywords": [
+		"docs",
+		"documentation",
+		"sync",
+		"markdown",
+		"cli",
+		"git",
+		"include",
+		"template",
+		"multi-site"
+	],
+	"homepage": "https://github.com/your-org/docs-sync#readme",
+	"bugs": {
+		"url": "https://github.com/your-org/docs-sync/issues"
 	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/your-org/docs-sync.git"
+	},
+	"license": "MIT",
+	"author": "Your Name <your.email@example.com>",
+	"type": "commonjs",
 	"main": "dist/src/config.js",
 	"types": "dist/src/config.d.ts",
-	"exports": {
-		".": {
-			"types": "./dist/src/config.d.ts",
-			"require": "./dist/src/config.js"
-		}
-	},
 	"bin": {
 		"docs-sync": "dist/bin/docs-sync.js"
 	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
 	"scripts": {
 		"build": "tsc",
 		"dev": "ts-node bin/docs-sync.ts",
 		"test": "vitest",
 		"test:run": "vitest run",
-		"test:coverage": "vitest run --coverage"
+		"test:coverage": "vitest run --coverage",
+		"prepublishOnly": "npm run test:run && npm run build"
 	},
 	"dependencies": {
 		"chokidar": "^3.6.0",
@@ -33,5 +52,17 @@
 		"ts-node": "^10.9.2",
 		"typescript": "^5.3.3",
 		"vitest": "^2.1.8"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/src/config.d.ts",
+			"require": "./dist/src/config.js"
+		}
+	},
+	"engines": {
+		"node": ">=14.0.0"
 	}
 }

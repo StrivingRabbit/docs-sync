@@ -10,3 +10,5 @@ coverage
 # Output directory
 output/
 docs/
+
+.npmrc

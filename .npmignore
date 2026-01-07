@@ -1,0 +1,30 @@
+# Source files
+src/
+bin/
+tsconfig.json
+
+# Tests
+**/__tests__/
+*.test.ts
+vitest.config.ts
+coverage/
+
+# Development files
+node_modules/
+.docs-sync-cache/
+*.log
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# CI/CD
+.github/
+
+# Documentation (included via files field)
+# Only README.md and LICENSE are included
