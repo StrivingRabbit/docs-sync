@@ -6,14 +6,21 @@ const INCLUDE_RE = /<!--\s*@include\s+([^>]+)\s*-->/g;
 
 export function resolveIncludes(
   content: string,
-  cacheDir: string,
+  sourcePaths: Record<string, string>,
   site: string,
   deps: Set<string>,
   fs: FsOps
 ) {
   return content.replace(INCLUDE_RE, (_, ref) => {
     const [sourceKey, relPath] = ref.trim().split(':');
-    const file = path.join(cacheDir, sourceKey, relPath);
+    const sourceBaseDir = sourcePaths[sourceKey];
+
+    if (!sourceBaseDir) {
+      logger.error(`Source '${sourceKey}' not found for include: ${ref}`);
+      return `<!-- ERROR: Source '${sourceKey}' not found -->`;
+    }
+
+    const file = path.join(sourceBaseDir, relPath);
 
     if (!fs.exists(file)) {
       logger.error(`Include file not found: ${ref} (${file})`);

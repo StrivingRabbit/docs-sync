@@ -19,12 +19,18 @@ describe('compileMapping', () => {
   let mockFs: FsOps;
   let graph: DepGraph;
   let mapping: Mapping;
+  let sourcePaths: Record<string, string>;
 
   beforeEach(() => {
     graph = new DepGraph();
     mapping = {
       from: 'common:source.md',
       to: 'docs/output.md',
+    };
+
+    sourcePaths = {
+      common: '/cache/common',
+      'other-source': '/cache/other-source',
     };
 
     mockFs = {
@@ -40,7 +46,7 @@ describe('compileMapping', () => {
     const sourceContent = '# Hello World';
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
 
-    compileMapping(mapping, '/cache', 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
 
     expect(mockFs.readFileSync).toHaveBeenCalledWith('/cache/common/source.md');
     expect(mockFs.ensureDir).toHaveBeenCalledWith('docs');
@@ -61,7 +67,7 @@ describe('compileMapping', () => {
       .mockReturnValueOnce(snippetContent);
     vi.mocked(mockFs.exists).mockReturnValue(true);
 
-    compileMapping(mapping, '/cache', 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
 
     const writeCall = vi.mocked(mockFs.writeFileSync).mock.calls[0];
     expect(writeCall[1]).toContain('Snippet content');
@@ -81,7 +87,7 @@ Content for site-b
 
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
 
-    compileMapping(mapping, '/cache', 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
 
     const writeCall = vi.mocked(mockFs.writeFileSync).mock.calls[0];
     expect(writeCall[1]).toContain('Content for site-a');
@@ -94,7 +100,7 @@ Content for site-b
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
     vi.mocked(mockFs.exists).mockReturnValue(false); // Files don't exist, will use error placeholder
 
-    compileMapping(mapping, '/cache', 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
 
     // Should have recorded dependencies even though files don't exist
     const affected = graph.affected('common:dep1.md');
@@ -105,7 +111,7 @@ Content for site-b
     const sourceContent = '# Test Content';
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
 
-    compileMapping(mapping, '/cache', 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
 
     const writeCall = vi.mocked(mockFs.writeFileSync).mock.calls[0];
     expect(writeCall[1]).toMatch(/hash: [a-f0-9]+/);
@@ -116,7 +122,7 @@ Content for site-b
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
 
     mapping.to = 'docs/nested/path/output.md';
-    compileMapping(mapping, '/cache', 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
 
     expect(mockFs.ensureDir).toHaveBeenCalledWith('docs/nested/path');
   });
@@ -127,7 +133,7 @@ Content for site-b
     });
 
     expect(() => {
-      compileMapping(mapping, '/cache', 'site-a', graph, mockFs);
+      compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
     }).toThrow();
   });
 
@@ -149,7 +155,7 @@ Site B specific content
       .mockReturnValueOnce(introContent);
     vi.mocked(mockFs.exists).mockReturnValue(true);
 
-    compileMapping(mapping, '/cache', 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
 
     const writeCall = vi.mocked(mockFs.writeFileSync).mock.calls[0];
     const output = writeCall[1] as string;
@@ -168,7 +174,7 @@ Site B specific content
 
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
 
-    compileMapping(mapping, '/cache', 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
 
     expect(mockFs.readFileSync).toHaveBeenCalledWith('/cache/other-source/file.md');
   });

@@ -9,21 +9,27 @@ import { logger } from './logger';
 
 export function compileMapping(
   mapping: Mapping,
-  cacheDir: string,
+  sourcePaths: Record<string, string>,
   site: string,
   graph: DepGraph,
   fs: FsOps
 ) {
   try {
     const [sourceKey, srcPath] = mapping.from.split(':');
-    const srcFile = path.join(cacheDir, sourceKey, srcPath);
+    const sourceBaseDir = sourcePaths[sourceKey];
+
+    if (!sourceBaseDir) {
+      throw new Error(`Source '${sourceKey}' not found in sourcePaths`);
+    }
+
+    const srcFile = path.join(sourceBaseDir, srcPath);
 
     logger.info(`Compiling ${mapping.from} → ${mapping.to}`);
 
     let content = fs.readFileSync(srcFile);
     const deps = new Set<string>([mapping.from]);
 
-    content = resolveIncludes(content, cacheDir, site, deps, fs);
+    content = resolveIncludes(content, sourcePaths, site, deps, fs);
     content = filterBySite(content, site);
 
     const hash = hashContent(content);

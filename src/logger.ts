@@ -36,7 +36,7 @@ export function createLogger(): Logger {
     },
 
     warn(msg) {
-      console.log(`${timestamp()} ${colors.yellow}⚠${colors.reset} ${msg}`)
+      console.log(`${timestamp()} ${colors.yellow}⚠ ${msg}${colors.reset}`)
     },
 
     error(msg) {

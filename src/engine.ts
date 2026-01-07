@@ -15,8 +15,10 @@ export async function syncAll(config: DocsSyncConfig) {
   logger.info(`Syncing ${Object.keys(config.sources).length} source(s)...`);
 
   // Git 操作失败是致命的，应该抛出错误
+  // 保存每个 source 的实际路径（可能是 cache 路径或本地路径）
+  const sourcePaths: Record<string, string> = {};
   for (const [key, src] of Object.entries(config.sources)) {
-    prepareRepo(key, src.repo, src.branch, config.cacheDir, fs);
+    sourcePaths[key] = prepareRepo(key, src.repo, src.branch, config.cacheDir, fs);
   }
 
   logger.info(`Compiling ${config.mappings.length} mapping(s)...`);
@@ -25,7 +27,7 @@ export async function syncAll(config: DocsSyncConfig) {
   let successCount = 0;
   for (const m of config.mappings) {
     try {
-      compileMapping(m, config.cacheDir, config.site, graph, fs);
+      compileMapping(m, sourcePaths, config.site, graph, fs);
       successCount++;
     } catch (error) {
       errors.push(`${m.from}: ${error}`);
@@ -51,15 +53,47 @@ export async function syncAll(config: DocsSyncConfig) {
 }
 
 export async function watch(config: DocsSyncConfig) {
-  const graph = await syncAll(config);
+  const graph = new DepGraph();
   const fs = config.dryRun ? dryRunFs : realFs;
 
+  logger.info(`Syncing ${Object.keys(config.sources).length} source(s)...`);
+
+  // 准备所有源并保存路径
+  const sourcePaths: Record<string, string> = {};
+  for (const [key, src] of Object.entries(config.sources)) {
+    sourcePaths[key] = prepareRepo(key, src.repo, src.branch, config.cacheDir, fs);
+  }
+
+  // 初始编译
+  logger.info(`Compiling ${config.mappings.length} mapping(s)...`);
+  for (const m of config.mappings) {
+    try {
+      compileMapping(m, sourcePaths, config.site, graph, fs);
+    } catch (error) {
+      logger.debug(`Skipping failed mapping: ${m.from}`);
+    }
+  }
+
+  // 构建要监视的路径列表
+  const watchPaths = Object.values(sourcePaths).map(p => `${p}/**/*.md`);
+
   chokidar
-    .watch(`${config.cacheDir}/**/*.md`)
+    .watch(watchPaths)
     .on('change', file => {
-      const sourceId = file
-        .replace(config.cacheDir + '/', '')
-        .replace(/\\/g, '/');
+      // 找到文件属于哪个 source
+      let sourceId: string | null = null;
+      for (const [key, basePath] of Object.entries(sourcePaths)) {
+        if (file.startsWith(basePath)) {
+          const relPath = file.substring(basePath.length + 1).replace(/\\/g, '/');
+          sourceId = `${key}:${relPath}`;
+          break;
+        }
+      }
+
+      if (!sourceId) {
+        logger.warn(`Could not determine source for changed file: ${file}`);
+        return;
+      }
 
       logger.info(`File changed: ${sourceId}`);
 
@@ -73,7 +107,7 @@ export async function watch(config: DocsSyncConfig) {
       for (const m of config.mappings) {
         if (affected.has(m.from)) {
           try {
-            compileMapping(m, config.cacheDir, config.site, graph, fs);
+            compileMapping(m, sourcePaths, config.site, graph, fs);
           } catch (error) {
             // 错误已记录，继续监视其他文件
             logger.debug(`Skipping failed mapping: ${m.from}`);

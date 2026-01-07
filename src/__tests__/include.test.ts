@@ -5,9 +5,14 @@ import type { FsOps } from '../fs/types';
 describe('resolveIncludes', () => {
   let mockFs: FsOps;
   let deps: Set<string>;
+  let sourcePaths: Record<string, string>;
 
   beforeEach(() => {
     deps = new Set();
+    sourcePaths = {
+      common: '/cache/common',
+      other: '/cache/other',
+    };
     mockFs = {
       exists: vi.fn(),
       readFileSync: vi.fn(),
@@ -24,7 +29,7 @@ describe('resolveIncludes', () => {
     vi.mocked(mockFs.exists).mockReturnValue(true);
     vi.mocked(mockFs.readFileSync).mockReturnValue(includedContent);
 
-    const result = resolveIncludes(content, '/cache', 'site-a', deps, mockFs);
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
 
     expect(result).toContain('This is the included content');
     expect(result).not.toContain('@include');
@@ -43,7 +48,7 @@ Middle
       .mockReturnValueOnce('Content A')
       .mockReturnValueOnce('Content B');
 
-    const result = resolveIncludes(content, '/cache', 'site-a', deps, mockFs);
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
 
     expect(result).toContain('Content A');
     expect(result).toContain('Content B');
@@ -64,7 +69,7 @@ Actual content`;
     vi.mocked(mockFs.exists).mockReturnValue(true);
     vi.mocked(mockFs.readFileSync).mockReturnValue(includedContent);
 
-    const result = resolveIncludes(content, '/cache', 'site-a', deps, mockFs);
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
 
     expect(result).toContain('Actual content');
     expect(result).not.toContain('title: Test');
@@ -79,7 +84,7 @@ Actual content`;
     vi.mocked(mockFs.exists).mockReturnValue(true);
     vi.mocked(mockFs.readFileSync).mockReturnValue(includedContent);
 
-    const result = resolveIncludes(content, '/cache', 'site-a', deps, mockFs);
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
 
     expect(result).toBe('Content with whitespace');
   });
@@ -89,7 +94,7 @@ Actual content`;
 
     vi.mocked(mockFs.exists).mockReturnValue(false);
 
-    const result = resolveIncludes(content, '/cache', 'site-a', deps, mockFs);
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
 
     expect(result).toContain('ERROR: Include file not found');
     expect(result).toContain('common:missing.md');
@@ -104,7 +109,7 @@ Actual content`;
       throw new Error('Permission denied');
     });
 
-    const result = resolveIncludes(content, '/cache', 'site-a', deps, mockFs);
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
 
     expect(result).toContain('ERROR: Failed to read include file');
     expect(result).toContain('common:error.md');
@@ -116,7 +121,7 @@ Actual content`;
     vi.mocked(mockFs.exists).mockReturnValue(true);
     vi.mocked(mockFs.readFileSync).mockReturnValue('content');
 
-    resolveIncludes(content, '/cache', 'site-a', deps, mockFs);
+    resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
 
     expect(mockFs.exists).toHaveBeenCalledWith('/cache/common/path/to/file.md');
     expect(mockFs.readFileSync).toHaveBeenCalledWith('/cache/common/path/to/file.md');
@@ -128,7 +133,7 @@ Actual content`;
     vi.mocked(mockFs.exists).mockReturnValue(true);
     vi.mocked(mockFs.readFileSync).mockReturnValue('content');
 
-    const result = resolveIncludes(content, '/cache', 'site-a', deps, mockFs);
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
 
     expect(result).toBe('content');
     expect(deps.has('common:file.md')).toBe(true);
@@ -137,7 +142,7 @@ Actual content`;
   it('should preserve content without includes', () => {
     const content = '# Normal content\nNo includes here';
 
-    const result = resolveIncludes(content, '/cache', 'site-a', deps, mockFs);
+    const result = resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
 
     expect(result).toBe(content);
     expect(deps.size).toBe(0);
@@ -153,7 +158,7 @@ Actual content`;
     vi.mocked(mockFs.exists).mockReturnValue(true);
     vi.mocked(mockFs.readFileSync).mockReturnValue('content');
 
-    resolveIncludes(content, '/cache', 'site-a', deps, mockFs);
+    resolveIncludes(content, sourcePaths, 'site-a', deps, mockFs);
 
     expect(deps.size).toBe(3);
     expect(deps.has('common:a.md')).toBe(true);
