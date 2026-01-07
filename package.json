@@ -13,16 +13,16 @@
 		"template",
 		"multi-site"
 	],
-	"homepage": "https://github.com/your-org/docs-sync#readme",
+	"homepage": "https://github.com/StrivingRabbit/docs-sync#readme",
 	"bugs": {
-		"url": "https://github.com/your-org/docs-sync/issues"
+		"url": "https://github.com/StrivingRabbit/docs-sync/issues"
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/your-org/docs-sync.git"
+		"url": "git+https://github.com/StrivingRabbit/docs-sync.git"
 	},
 	"license": "MIT",
-	"author": "Your Name <your.email@example.com>",
+	"author": "DCloud_Member <emxxme@qq.com>",
 	"type": "commonjs",
 	"main": "dist/src/config.js",
 	"types": "dist/src/config.d.ts",
@@ -40,6 +40,10 @@
 		"test": "vitest",
 		"test:run": "vitest run",
 		"test:coverage": "vitest run --coverage",
+    "publish:patch": "npm version patch && npm publish",
+    "publish:minor": "npm version minor && npm publish",
+    "publish:major": "npm version major  && npm publish",
+    "postpublish": "cnpm sync docs-sync-cli",
 		"prepublishOnly": "npm run test:run && npm run build"
 	},
 	"dependencies": {
