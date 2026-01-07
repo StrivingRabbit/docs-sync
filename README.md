@@ -22,10 +22,14 @@ npm run build
 
 ## 配置
 
-在项目根目录创建 `docs-sync.config.ts`：
+在项目根目录创建配置文件，支持 TypeScript 或 JavaScript 格式：
+
+### TypeScript 配置 (推荐)
+
+创建 `docs-sync.config.ts`：
 
 ```typescript
-import { defineConfig } from '@docs-sync/cli';
+import { defineConfig } from 'docs-sync-cli';
 
 export default defineConfig({
   site: 'site-a',
@@ -66,6 +70,35 @@ export default defineConfig({
   ],
 });
 ```
+
+### JavaScript 配置
+
+创建 `docs-sync.config.js`：
+
+```javascript
+const { defineConfig } = require('docs-sync-cli');
+
+module.exports = defineConfig({
+  site: 'site-a',
+  cacheDir: '.docs-sync-cache',
+
+  sources: {
+    common: {
+      repo: 'git@github.com:your-org/docs-common.git',
+      branch: 'main',
+    },
+  },
+
+  mappings: [
+    {
+      from: 'common:guides/install.md',
+      to: 'docs/guide/install.md',
+    },
+  ],
+});
+```
+
+> **注意**: CLI 会自动查找配置文件，优先级为 `docs-sync.config.ts` > `docs-sync.config.js`
 
 ### 配置说明
 

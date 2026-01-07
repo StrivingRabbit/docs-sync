@@ -5,26 +5,54 @@ import { logger } from '../src/logger';
 import { existsSync } from 'fs';
 
 async function loadConfig(customPath?: string) {
-  // Use custom path if provided, otherwise look for default config in cwd
-  const configPath = customPath
-    ? path.resolve(customPath)
-    : path.resolve(process.cwd(), 'docs-sync.config.ts');
+  let configPath: string;
 
-  if (!existsSync(configPath)) {
-    logger.error(`Config file not found: ${configPath}`);
-    process.exit(1);
+  if (customPath) {
+    // Use custom path if provided
+    configPath = path.resolve(customPath);
+    if (!existsSync(configPath)) {
+      logger.error(`Config file not found: ${configPath}`);
+      process.exit(1);
+    }
+  } else {
+    // Look for default config files in order: .ts, .js
+    const cwd = process.cwd();
+    const possiblePaths = [
+      path.resolve(cwd, 'docs-sync.config.ts'),
+      path.resolve(cwd, 'docs-sync.config.js'),
+    ];
+
+    const foundPath = possiblePaths.find((p) => existsSync(p));
+
+    if (!foundPath) {
+      logger.error('Config file not found. Looking for:');
+      possiblePaths.forEach((p) => logger.error(`  - ${p}`));
+      logger.info('');
+      logger.info('Create a config file with:');
+      logger.info('  docs-sync.config.ts (TypeScript)');
+      logger.info('  docs-sync.config.js (JavaScript)');
+      process.exit(1);
+    }
+
+    configPath = foundPath;
   }
 
   try {
-    // Try to load .ts file using ts-node
+    // Register ts-node for TypeScript files
     if (configPath.endsWith('.ts')) {
-      // Register ts-node to handle TypeScript files
-      require('ts-node').register({
-        transpileOnly: true,
-        compilerOptions: {
-          module: 'commonjs',
-        },
-      });
+      try {
+        require('ts-node').register({
+          transpileOnly: true,
+          compilerOptions: {
+            module: 'commonjs',
+          },
+        });
+      } catch (error) {
+        logger.error('Failed to load ts-node. TypeScript config files require ts-node.');
+        logger.error('Please install: npm install -D ts-node typescript');
+        logger.error('Or use a JavaScript config file: docs-sync.config.js');
+        process.exit(1);
+      }
     }
 
     // Use require for CommonJS compatibility
@@ -79,7 +107,7 @@ async function main() {
     logger.info('  watch     Watch for changes and sync automatically');
     logger.info('');
     logger.info('Options:');
-    logger.info('  -c, --config <path>   Path to config file (default: docs-sync.config.ts)');
+    logger.info('  -c, --config <path>   Path to config file (default: docs-sync.config.{ts,js})');
     logger.info('  --dry-run             Preview changes without writing files');
     logger.info('  --debug               Enable debug logging');
     process.exit(1);
