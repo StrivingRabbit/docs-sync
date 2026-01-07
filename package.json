@@ -1,13 +1,16 @@
 {
 	"name": "@docs-sync/cli",
 	"version": "0.0.0",
-	"type": "module",
+	"type": "commonjs",
+	"publishConfig": {
+		"access": "public"
+	},
 	"main": "dist/src/config.js",
 	"types": "dist/src/config.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/src/config.d.ts",
-			"import": "./dist/src/config.js"
+			"require": "./dist/src/config.js"
 		}
 	},
 	"bin": {
