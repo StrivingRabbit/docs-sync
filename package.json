@@ -1,5 +1,5 @@
 {
-	"name": "@docs-sync/cli",
+	"name": "docs-sync-cli",
 	"version": "1.0.0",
 	"description": "A documentation synchronization tool for pulling content from multiple Git repositories or local directories and compiling them into your local project",
 	"keywords": [
