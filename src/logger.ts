@@ -32,7 +32,7 @@ export function createLogger(): Logger {
     },
 
     success(msg) {
-      console.log(`${timestamp()} ${colors.green}✓${colors.reset} ${msg}`)
+      console.log(`${timestamp()} ${colors.green}✓ ${msg}${colors.reset}`)
     },
 
     warn(msg) {
@@ -40,7 +40,7 @@ export function createLogger(): Logger {
     },
 
     error(msg) {
-      console.error(`${timestamp()} ${colors.red}✖${colors.reset} ${msg}`)
+      console.error(`${timestamp()} ${colors.red}✖ ${msg}${colors.reset}`)
     },
 
     debug(msg) {
