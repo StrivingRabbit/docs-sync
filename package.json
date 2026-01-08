@@ -1,6 +1,6 @@
 {
 	"name": "docs-sync-cli",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "A documentation synchronization tool for pulling content from multiple Git repositories or local directories and compiling them into your local project",
 	"keywords": [
 		"docs",
