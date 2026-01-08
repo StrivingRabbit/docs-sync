@@ -7,6 +7,35 @@ import { Mapping } from './types';
 import { FsOps } from './fs/types';
 import { logger } from './logger';
 
+/**
+ * 删除指定 mapping 对应的输出文件
+ * 当源文件被删除时调用
+ */
+export function deleteMapping(
+  mapping: Mapping,
+  graph: DepGraph,
+  fs: FsOps
+) {
+  try {
+    logger.info(`Deleting ${mapping.from} → ${mapping.to}`);
+
+    // 删除输出文件(如果存在)
+    if (fs.exists(mapping.to)) {
+      fs.unlinkSync(mapping.to);
+      logger.success(`Deleted ${mapping.to}`);
+    } else {
+      logger.debug(`Output file not found, skipping: ${mapping.to}`);
+    }
+
+    // 从依赖图中移除
+    graph.removeDep(mapping.from);
+
+  } catch (error) {
+    logger.error(`Failed to delete ${mapping.from}: ${error}`);
+    throw new Error(`Failed to delete ${mapping.from}: ${error}`);
+  }
+}
+
 export function compileMapping(
   mapping: Mapping,
   sourcePaths: Record<string, string>,

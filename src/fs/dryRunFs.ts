@@ -22,5 +22,9 @@ export const dryRunFs: FsOps = {
 
   stat(p) {
     return fs.statSync(p)
+  },
+
+  unlinkSync(file) {
+    logger.warn(`[DRY-RUN] Would delete file: ${file}`)
   }
 }

@@ -1,6 +1,6 @@
 import chokidar from 'chokidar';
 import { prepareRepo } from './git';
-import { compileMapping } from './compiler';
+import { compileMapping, deleteMapping } from './compiler';
 import { DepGraph } from './graph';
 import { DocsSyncConfig } from './types';
 import { realFs } from './fs/realFs';
@@ -77,42 +77,59 @@ export async function watch(config: DocsSyncConfig) {
   // 构建要监视的路径列表
   const watchPaths = Object.values(sourcePaths).map(p => `${p}/**/*.md`);
 
-  chokidar
-    .watch(watchPaths)
-    .on('change', file => {
-      // 找到文件属于哪个 source
-      let sourceId: string | null = null;
-      for (const [key, basePath] of Object.entries(sourcePaths)) {
-        if (file.startsWith(basePath)) {
-          const relPath = file.substring(basePath.length + 1).replace(/\\/g, '/');
-          sourceId = `${key}:${relPath}`;
-          break;
-        }
+  const handleFileChange = (file: string, eventType: 'change' | 'unlink') => {
+    // 找到文件属于哪个 source
+    let sourceId: string | null = null;
+    for (const [key, basePath] of Object.entries(sourcePaths)) {
+      if (file.startsWith(basePath)) {
+        const relPath = file.substring(basePath.length + 1).replace(/\\/g, '/');
+        sourceId = `${key}:${relPath}`;
+        break;
       }
+    }
 
-      if (!sourceId) {
-        logger.warn(`Could not determine source for changed file: ${file}`);
-        return;
-      }
+    if (!sourceId) {
+      logger.warn(`Could not determine source for ${eventType} file: ${file}`);
+      return;
+    }
 
-      logger.info(`File changed: ${sourceId}`);
+    logger.info(`File ${eventType === 'unlink' ? 'deleted' : 'changed'}: ${sourceId}`);
 
-      const affected = graph.affected(sourceId);
-
-      if (affected.size > 0) {
-        logger.info(`Recompiling ${affected.size} affected mapping(s)...`);
-      }
-
-      // Watch 模式下，单个文件编译失败不应该中断监视
+    // 如果是删除事件，找到直接使用该文件的 mappings 并删除它们
+    if (eventType === 'unlink') {
       for (const m of config.mappings) {
-        if (affected.has(m.from)) {
+        if (m.from === sourceId) {
           try {
-            compileMapping(m, sourcePaths, config.site, graph, fs);
+            deleteMapping(m, graph, fs);
           } catch (error) {
-            // 错误已记录，继续监视其他文件
-            logger.debug(`Skipping failed mapping: ${m.from}`);
+            logger.debug(`Failed to delete mapping: ${m.from}`);
           }
         }
       }
-    });
+    }
+
+    // 查找受影响的 mappings（包括通过 include 间接依赖的）
+    const affected = graph.affected(sourceId);
+
+    if (affected.size > 0) {
+      logger.info(`Recompiling ${affected.size} affected mapping(s)...`);
+    }
+
+    // Watch 模式下，单个文件编译失败不应该中断监视
+    for (const m of config.mappings) {
+      if (affected.has(m.from)) {
+        try {
+          compileMapping(m, sourcePaths, config.site, graph, fs);
+        } catch (error) {
+          // 错误已记录，继续监视其他文件
+          logger.debug(`Skipping failed mapping: ${m.from}`);
+        }
+      }
+    }
+  };
+
+  chokidar
+    .watch(watchPaths)
+    .on('change', file => handleFileChange(file, 'change'))
+    .on('unlink', file => handleFileChange(file, 'unlink'));
 }

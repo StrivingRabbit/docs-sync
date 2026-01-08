@@ -160,4 +160,121 @@ describe('DepGraph', () => {
     expect(mermaid).toContain('target.md');
     expect(mermaid).toContain('-->');
   });
+
+  describe('removeDep', () => {
+    it('should remove dependency from graph', () => {
+      const graph = new DepGraph();
+      graph.addDep('common:a.md', 'target1.md');
+      graph.addDep('common:a.md', 'target2.md');
+
+      expect(graph.reverse.has('common:a.md')).toBe(true);
+
+      graph.removeDep('common:a.md');
+
+      expect(graph.reverse.has('common:a.md')).toBe(false);
+    });
+
+    it('should remove dependency from other targets', () => {
+      const graph = new DepGraph();
+      // Build: snippet.md -> source.md -> target1.md
+      graph.addDep('common:snippet.md', 'common:source.md');
+      graph.addDep('common:source.md', 'target1.md');
+
+      graph.removeDep('common:source.md');
+
+      // common:source.md should be removed
+      expect(graph.reverse.has('common:source.md')).toBe(false);
+
+      // common:snippet.md should no longer reference common:source.md
+      const snippetTargets = graph.reverse.get('common:snippet.md');
+      expect(snippetTargets?.has('common:source.md')).toBe(false);
+    });
+
+    it('should handle removing non-existent dependency', () => {
+      const graph = new DepGraph();
+      graph.addDep('common:a.md', 'target1.md');
+
+      // Should not throw when removing non-existent dependency
+      expect(() => {
+        graph.removeDep('common:nonexistent.md');
+      }).not.toThrow();
+
+      // Original dependency should remain
+      expect(graph.reverse.has('common:a.md')).toBe(true);
+    });
+
+    it('should remove dependency from complex graph', () => {
+      const graph = new DepGraph();
+      // Build complex graph:
+      //   a.md -> b.md -> c.md
+      //   a.md -> d.md
+      //   e.md -> b.md
+      graph.addDep('a.md', 'b.md');
+      graph.addDep('b.md', 'c.md');
+      graph.addDep('a.md', 'd.md');
+      graph.addDep('e.md', 'b.md');
+
+      // Remove b.md
+      graph.removeDep('b.md');
+
+      // b.md should be removed from graph
+      expect(graph.reverse.has('b.md')).toBe(false);
+
+      // a.md should no longer reference b.md, but should still reference d.md
+      const aTargets = graph.reverse.get('a.md');
+      expect(aTargets?.has('b.md')).toBe(false);
+      expect(aTargets?.has('d.md')).toBe(true);
+
+      // e.md should no longer reference b.md
+      const eTargets = graph.reverse.get('e.md');
+      expect(eTargets?.has('b.md')).toBe(false);
+    });
+
+    it('should affect graph queries after removal', () => {
+      const graph = new DepGraph();
+      // a.md -> b.md -> c.md
+      graph.addDep('a.md', 'b.md');
+      graph.addDep('b.md', 'c.md');
+
+      // Before removal, a.md affects both b.md and c.md
+      let affected = graph.affected('a.md');
+      expect(affected.size).toBe(2);
+      expect(affected.has('b.md')).toBe(true);
+      expect(affected.has('c.md')).toBe(true);
+
+      // Remove b.md
+      graph.removeDep('b.md');
+
+      // After removal, a.md should no longer affect c.md (chain is broken)
+      affected = graph.affected('a.md');
+      expect(affected.size).toBe(0);
+    });
+
+    it('should handle removing from empty graph', () => {
+      const graph = new DepGraph();
+
+      expect(() => {
+        graph.removeDep('common:a.md');
+      }).not.toThrow();
+
+      expect(graph.reverse.size).toBe(0);
+    });
+
+    it('should clean up empty target sets', () => {
+      const graph = new DepGraph();
+      graph.addDep('a.md', 'b.md');
+      graph.addDep('c.md', 'b.md');
+
+      // Remove b.md
+      graph.removeDep('b.md');
+
+      // Both a.md and c.md should still exist but with empty or cleaned target sets
+      const aTargets = graph.reverse.get('a.md');
+      const cTargets = graph.reverse.get('c.md');
+
+      // They should exist but not reference b.md
+      expect(aTargets?.has('b.md')).toBe(false);
+      expect(cTargets?.has('b.md')).toBe(false);
+    });
+  });
 });

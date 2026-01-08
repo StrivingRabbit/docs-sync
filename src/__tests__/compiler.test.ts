@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { compileMapping } from '../compiler';
+import { compileMapping, deleteMapping } from '../compiler';
 import { DepGraph } from '../graph';
 import type { Mapping } from '../types';
 import type { FsOps } from '../fs/types';
@@ -39,6 +39,7 @@ describe('compileMapping', () => {
       writeFileSync: vi.fn(),
       ensureDir: vi.fn(),
       stat: vi.fn(),
+      unlinkSync: vi.fn(),
     };
   });
 
@@ -177,5 +178,104 @@ Site B specific content
     compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
 
     expect(mockFs.readFileSync).toHaveBeenCalledWith('/cache/other-source/file.md');
+  });
+});
+
+describe('deleteMapping', () => {
+  let mockFs: FsOps;
+  let graph: DepGraph;
+  let mapping: Mapping;
+
+  beforeEach(() => {
+    graph = new DepGraph();
+    mapping = {
+      from: 'common:source.md',
+      to: 'docs/output.md',
+    };
+
+    mockFs = {
+      exists: vi.fn(),
+      readFileSync: vi.fn(),
+      writeFileSync: vi.fn(),
+      ensureDir: vi.fn(),
+      stat: vi.fn(),
+      unlinkSync: vi.fn(),
+    };
+  });
+
+  it('should delete output file if it exists', () => {
+    vi.mocked(mockFs.exists).mockReturnValue(true);
+
+    deleteMapping(mapping, graph, mockFs);
+
+    expect(mockFs.exists).toHaveBeenCalledWith('docs/output.md');
+    expect(mockFs.unlinkSync).toHaveBeenCalledWith('docs/output.md');
+  });
+
+  it('should not attempt to delete if output file does not exist', () => {
+    vi.mocked(mockFs.exists).mockReturnValue(false);
+
+    deleteMapping(mapping, graph, mockFs);
+
+    expect(mockFs.exists).toHaveBeenCalledWith('docs/output.md');
+    expect(mockFs.unlinkSync).not.toHaveBeenCalled();
+  });
+
+  it('should remove mapping from dependency graph', () => {
+    // Set up graph with dependencies
+    graph.addDep('common:source.md', 'target1');
+    graph.addDep('common:source.md', 'target2');
+
+    vi.mocked(mockFs.exists).mockReturnValue(true);
+
+    deleteMapping(mapping, graph, mockFs);
+
+    // Verify the dependency was removed
+    expect(graph.reverse.has('common:source.md')).toBe(false);
+  });
+
+  it('should remove mapping from graph even if file delete fails', () => {
+    vi.mocked(mockFs.exists).mockReturnValue(true);
+    vi.mocked(mockFs.unlinkSync).mockImplementation(() => {
+      throw new Error('Permission denied');
+    });
+
+    // Set up graph
+    graph.addDep('common:source.md', 'target1');
+
+    expect(() => {
+      deleteMapping(mapping, graph, mockFs);
+    }).toThrow('Permission denied');
+
+    // Graph should not be modified if operation fails
+    expect(graph.reverse.has('common:source.md')).toBe(true);
+  });
+
+  it('should handle deletion when mapping has multiple dependencies', () => {
+    // Build a graph where source.md is used by multiple targets
+    graph.addDep('common:snippet.md', 'common:source.md');
+    graph.addDep('common:source.md', 'target1');
+    graph.addDep('common:source.md', 'target2');
+
+    vi.mocked(mockFs.exists).mockReturnValue(true);
+
+    deleteMapping(mapping, graph, mockFs);
+
+    // common:source.md should be removed from graph
+    expect(graph.reverse.has('common:source.md')).toBe(false);
+
+    // common:snippet.md should still exist, but common:source.md should be removed from its targets
+    const snippetTargets = graph.reverse.get('common:snippet.md');
+    expect(snippetTargets?.has('common:source.md')).toBe(false);
+  });
+
+  it('should work when mapping has no dependencies in graph', () => {
+    vi.mocked(mockFs.exists).mockReturnValue(true);
+
+    // No dependencies added to graph
+    deleteMapping(mapping, graph, mockFs);
+
+    expect(mockFs.unlinkSync).toHaveBeenCalledWith('docs/output.md');
+    expect(graph.reverse.has('common:source.md')).toBe(false);
   });
 });

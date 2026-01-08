@@ -25,6 +25,19 @@ export class DepGraph {
   }
 
   /**
+   * 清除指定依赖的所有记录
+   * 当源文件被删除时调用
+   */
+  removeDep(dep: string) {
+    this.reverse.delete(dep);
+
+    // 同时从其他依赖的目标集合中移除
+    for (const targets of this.reverse.values()) {
+      targets.delete(dep);
+    }
+  }
+
+  /**
    * 生成依赖图的可视化表示（ASCII 艺术风格）
    */
   visualize(): string {

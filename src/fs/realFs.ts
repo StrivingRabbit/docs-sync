@@ -26,5 +26,9 @@ export const realFs: FsOps = {
 
   stat(p) {
     return fs.statSync(p)
+  },
+
+  unlinkSync(file) {
+    fs.unlinkSync(file)
   }
 }

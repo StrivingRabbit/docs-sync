@@ -6,4 +6,5 @@ export type FsOps = {
   readFileSync(file: string): string
   exists(path: string): boolean
   stat(path: string): fs.Stats
+  unlinkSync(file: string): void
 }
