@@ -457,6 +457,25 @@ docs-sync sync --debug
 - 内容哈希值
 - 依赖关系
 - Include 处理过程
+- **依赖图可视化** - 以 ASCII 树形结构展示文件间的依赖关系
+
+在 watch 模式下,每次文件变更后也会显示更新后的依赖图:
+
+```bash
+docs-sync watch --debug
+```
+
+依赖图示例:
+```
+=== Dependency Graph ===
+common:snippet.md
+  └─ docs1:main.md
+      └─ output/site-a/main.md
+
+common:intro.md
+  └─ docs1:main.md
+      └─ output/site-a/main.md
+```
 
 ### Q: Watch 模式会监视什么?
 

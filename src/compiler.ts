@@ -64,8 +64,11 @@ export function compileMapping(
     const hash = hashContent(content);
     logger.debug(`Content hash: ${hash.substring(0, 8)}...`);
 
+    // 添加依赖到图中,排除自己(避免自循环)
     for (const d of deps) {
-      graph.addDep(d, mapping.from);
+      if (d !== mapping.from) {
+        graph.addDep(d, mapping.from);
+      }
     }
 
     if (deps.size > 1) {

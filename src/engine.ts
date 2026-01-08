@@ -49,6 +49,12 @@ export async function syncAll(config: DocsSyncConfig) {
     logger.success(`All ${successCount} mapping(s) compiled successfully`);
   }
 
+  // 在 debug 模式下输出依赖图
+  if (process.env.DEBUG === 'true') {
+    logger.info('\n=== Dependency Graph ===');
+    logger.info(graph.visualize());
+  }
+
   return graph;
 }
 
@@ -72,6 +78,12 @@ export async function watch(config: DocsSyncConfig) {
     } catch (error) {
       logger.debug(`Skipping failed mapping: ${m.from}`);
     }
+  }
+
+  // 在 debug 模式下输出初始依赖图
+  if (process.env.DEBUG === 'true') {
+    logger.info('\n=== Initial Dependency Graph ===');
+    logger.info(graph.visualize());
   }
 
   // 构建要监视的路径列表
@@ -125,6 +137,12 @@ export async function watch(config: DocsSyncConfig) {
           logger.debug(`Skipping failed mapping: ${m.from}`);
         }
       }
+    }
+
+    // 在 debug 模式下输出更新后的依赖图
+    if (process.env.DEBUG === 'true') {
+      logger.info('\n=== Updated Dependency Graph ===');
+      logger.info(graph.visualize());
     }
   };
 

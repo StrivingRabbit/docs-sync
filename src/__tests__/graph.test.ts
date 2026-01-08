@@ -180,7 +180,14 @@ describe('DepGraph', () => {
       graph.addDep('common:snippet.md', 'common:source.md');
       graph.addDep('common:source.md', 'target1.md');
 
+      console.log('\n=== Before Removing common:source.md ===');
+      console.log(graph.visualize());
+
       graph.removeDep('common:source.md');
+
+      console.log('\n=== After Removing common:source.md ===');
+      console.log(graph.visualize());
+      console.log('');
 
       // common:source.md should be removed
       expect(graph.reverse.has('common:source.md')).toBe(false);
@@ -214,8 +221,15 @@ describe('DepGraph', () => {
       graph.addDep('a.md', 'd.md');
       graph.addDep('e.md', 'b.md');
 
+      console.log('\n=== Before Removing b.md (Complex Graph) ===');
+      console.log(graph.visualize());
+
       // Remove b.md
       graph.removeDep('b.md');
+
+      console.log('\n=== After Removing b.md ===');
+      console.log(graph.visualize());
+      console.log('');
 
       // b.md should be removed from graph
       expect(graph.reverse.has('b.md')).toBe(false);
@@ -236,8 +250,12 @@ describe('DepGraph', () => {
       graph.addDep('a.md', 'b.md');
       graph.addDep('b.md', 'c.md');
 
+      console.log('\n=== Before Removing b.md (Dependency Chain) ===');
+      console.log(graph.visualize());
+
       // Before removal, a.md affects both b.md and c.md
       let affected = graph.affected('a.md');
+      console.log(`\nAffected by a.md (before): ${Array.from(affected).join(', ')}`);
       expect(affected.size).toBe(2);
       expect(affected.has('b.md')).toBe(true);
       expect(affected.has('c.md')).toBe(true);
@@ -245,8 +263,14 @@ describe('DepGraph', () => {
       // Remove b.md
       graph.removeDep('b.md');
 
+      console.log('\n=== After Removing b.md (Chain Broken) ===');
+      console.log(graph.visualize());
+
       // After removal, a.md should no longer affect c.md (chain is broken)
       affected = graph.affected('a.md');
+      console.log(`Affected by a.md (after): ${affected.size === 0 ? '(none)' : Array.from(affected).join(', ')}`);
+      console.log('');
+
       expect(affected.size).toBe(0);
     });
 

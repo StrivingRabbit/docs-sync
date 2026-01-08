@@ -257,9 +257,16 @@ describe('deleteMapping', () => {
     graph.addDep('common:source.md', 'target1');
     graph.addDep('common:source.md', 'target2');
 
+    console.log('\n=== Before Deleting common:source.md (Multiple Dependencies) ===');
+    console.log(graph.visualize());
+
     vi.mocked(mockFs.exists).mockReturnValue(true);
 
     deleteMapping(mapping, graph, mockFs);
+
+    console.log('\n=== After Deleting common:source.md ===');
+    console.log(graph.visualize());
+    console.log('');
 
     // common:source.md should be removed from graph
     expect(graph.reverse.has('common:source.md')).toBe(false);
