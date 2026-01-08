@@ -1,5 +1,12 @@
 # docs-sync-cli
 
+## 1.0.3
+
+### Patch Changes
+
+- feat: 添加删除功能
+- fix: graph 依赖添加自身
+
 ## 1.0.2
 
 ### Patch Changes
