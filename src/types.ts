@@ -1,6 +1,6 @@
 export type Source = {
   repo: string;
-  branch: string;
+  branch?: string; // Optional for local paths
 };
 
 export type Mapping = {

@@ -36,22 +36,20 @@ export default defineConfig({
   cacheDir: '.docs-sync-cache',
 
   sources: {
-    // Git 仓库源
+    // Git 仓库源（必须指定 branch）
     common: {
       repo: 'git@github.com:your-org/docs-common.git',
       branch: 'main',
     },
 
-    // 本地目录源（支持绝对路径和相对路径）
+    // 本地目录源（支持绝对路径和相对路径，branch 可选）
     local: {
       repo: './source',  // 相对路径，相对于 cwd
-      branch: 'main',    // 本地源不使用此字段，但需要提供
     },
 
     // 本地绝对路径源
     other: {
       repo: '/Users/username/my-docs',
-      branch: 'main',
     },
   },
 
@@ -106,14 +104,20 @@ module.exports = defineConfig({
 
 每个源可以是:
 
-- **Git 仓库**: 提供 Git URL (如 `git@github.com:...` 或 `https://github.com/...`)
-- **本地目录**: 提供本地路径 (绝对路径如 `/path/to/docs` 或相对路径如 `./source`)
+- **Git 仓库**:
+  - 提供 Git URL (如 `git@github.com:...` 或 `https://github.com/...`)
+  - **必须**指定 `branch` 字段
+
+- **本地目录**:
+  - 提供本地路径 (绝对路径如 `/path/to/docs` 或相对路径如 `./source`)
+  - `branch` 字段**可选**，会被忽略
 
 **本地源的优势:**
 - ✅ 无需拷贝,直接使用绝对路径读取
 - ✅ 节省磁盘空间
 - ✅ 实时反映文件变化
 - ✅ 更适合开发调试场景
+- ✅ 不需要配置 `branch` 字段
 
 #### mappings
 

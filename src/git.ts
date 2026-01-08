@@ -6,7 +6,7 @@ import { logger } from './logger';
 export function prepareRepo(
   key: string,
   repo: string,
-  branch: string,
+  branch: string | undefined,
   cacheDir: string,
   fs: FsOps
 ) {
@@ -27,6 +27,11 @@ export function prepareRepo(
   }
 
   // Git 仓库，使用现有逻辑
+  if (!branch) {
+    logger.error(`Branch is required for Git repository: ${key}`);
+    throw new Error(`Branch is required for Git repository: ${key}`);
+  }
+
   const dir = path.join(cacheDir, key);
 
   try {
