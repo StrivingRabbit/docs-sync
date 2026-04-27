@@ -1,5 +1,11 @@
 # docs-sync-cli
 
+## 1.0.4
+
+### Patch Changes
+
+- feat: sync 时添加插入 source frontmatter 能力
+
 ## 1.0.3
 
 ### Patch Changes
