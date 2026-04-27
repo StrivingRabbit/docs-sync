@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { compileMapping, deleteMapping } from '../compiler';
+import { compileMapping, deleteMapping, normalizeRepoUrl, buildEditLink } from '../compiler';
 import { DepGraph } from '../graph';
-import type { Mapping } from '../types';
+import type { Mapping, Source } from '../types';
 import type { FsOps } from '../fs/types';
 
 // Mock logger to avoid console output during tests
@@ -20,6 +20,7 @@ describe('compileMapping', () => {
   let graph: DepGraph;
   let mapping: Mapping;
   let sourcePaths: Record<string, string>;
+  let sources: Record<string, Source>;
 
   beforeEach(() => {
     graph = new DepGraph();
@@ -31,6 +32,11 @@ describe('compileMapping', () => {
     sourcePaths = {
       common: '/cache/common',
       'other-source': '/cache/other-source',
+    };
+
+    sources = {
+      common: { repo: 'https://github.com/org/common.git', branch: 'main' },
+      'other-source': { repo: 'https://github.com/org/other.git', branch: 'main' },
     };
 
     mockFs = {
@@ -47,7 +53,7 @@ describe('compileMapping', () => {
     const sourceContent = '# Hello World';
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
 
-    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
 
     expect(mockFs.readFileSync).toHaveBeenCalledWith('/cache/common/source.md');
     expect(mockFs.ensureDir).toHaveBeenCalledWith('docs');
@@ -68,7 +74,7 @@ describe('compileMapping', () => {
       .mockReturnValueOnce(snippetContent);
     vi.mocked(mockFs.exists).mockReturnValue(true);
 
-    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
 
     const writeCall = vi.mocked(mockFs.writeFileSync).mock.calls[0];
     expect(writeCall[1]).toContain('Snippet content');
@@ -88,7 +94,7 @@ Content for site-b
 
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
 
-    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
 
     const writeCall = vi.mocked(mockFs.writeFileSync).mock.calls[0];
     expect(writeCall[1]).toContain('Content for site-a');
@@ -101,7 +107,7 @@ Content for site-b
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
     vi.mocked(mockFs.exists).mockReturnValue(false); // Files don't exist, will use error placeholder
 
-    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
 
     // Should have recorded dependencies even though files don't exist
     const affected = graph.affected('common:dep1.md');
@@ -112,7 +118,7 @@ Content for site-b
     const sourceContent = '# Test Content';
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
 
-    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
 
     const writeCall = vi.mocked(mockFs.writeFileSync).mock.calls[0];
     expect(writeCall[1]).toMatch(/hash: [a-f0-9]+/);
@@ -123,7 +129,7 @@ Content for site-b
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
 
     mapping.to = 'docs/nested/path/output.md';
-    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
 
     expect(mockFs.ensureDir).toHaveBeenCalledWith('docs/nested/path');
   });
@@ -134,7 +140,7 @@ Content for site-b
     });
 
     expect(() => {
-      compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
+      compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
     }).toThrow();
   });
 
@@ -156,7 +162,7 @@ Site B specific content
       .mockReturnValueOnce(introContent);
     vi.mocked(mockFs.exists).mockReturnValue(true);
 
-    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
 
     const writeCall = vi.mocked(mockFs.writeFileSync).mock.calls[0];
     const output = writeCall[1] as string;
@@ -175,9 +181,103 @@ Site B specific content
 
     vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
 
-    compileMapping(mapping, sourcePaths, 'site-a', graph, mockFs);
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
 
     expect(mockFs.readFileSync).toHaveBeenCalledWith('/cache/other-source/file.md');
+  });
+
+  it('should add source frontmatter when content has no frontmatter', () => {
+    const sourceContent = '# Hello World';
+    vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
+
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
+
+    const output = vi.mocked(mockFs.writeFileSync).mock.calls[0][1] as string;
+    expect(output).toMatch(/^---\nsource: https:\/\/github\.com\/org\/common\/edit\/main\/source\.md\n---\n/);
+  });
+
+  it('should inject source into existing frontmatter', () => {
+    const sourceContent = '---\ntitle: My Doc\n---\n# Hello World';
+    vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
+
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
+
+    const output = vi.mocked(mockFs.writeFileSync).mock.calls[0][1] as string;
+    expect(output).toMatch(/^---\nsource: https:\/\/github\.com\/org\/common\/edit\/main\/source\.md\ntitle: My Doc\n---\n/);
+    expect(output).toContain('# Hello World');
+  });
+
+  it('should overwrite existing source field in frontmatter without duplicating', () => {
+    const sourceContent = '---\ntitle: My Doc\nsource: old-value\n---\n# Hello World';
+    vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
+
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
+
+    const output = vi.mocked(mockFs.writeFileSync).mock.calls[0][1] as string;
+    const matches = output.match(/^source:/gm);
+    expect(matches).toHaveLength(1);
+    expect(output).toContain('source: https://github.com/org/common/edit/main/source.md');
+    expect(output).not.toContain('old-value');
+  });
+
+  it('should not inject frontmatter for local path sources', () => {
+    sources['common'] = { repo: '/local/path/to/repo' };
+    const sourceContent = '# Local Doc';
+    vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
+
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
+
+    const output = vi.mocked(mockFs.writeFileSync).mock.calls[0][1] as string;
+    expect(output).not.toMatch(/^---/);
+    expect(output).toContain('GENERATED BY docs-sync');
+  });
+
+  it('should not inject frontmatter for _sidebar.md', () => {
+    mapping.from = 'common:_sidebar.md';
+    const sourceContent = '* [Home](/)';
+    vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
+
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
+
+    const output = vi.mocked(mockFs.writeFileSync).mock.calls[0][1] as string;
+    expect(output).not.toMatch(/^---/);
+    expect(output).toContain('GENERATED BY docs-sync');
+    expect(output).toContain('* [Home](/)');
+  });
+
+  it('should not inject frontmatter for nested _sidebar.md', () => {
+    mapping.from = 'common:guides/_sidebar.md';
+    const sourceContent = '* [Guide](guide.md)';
+    vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
+
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
+
+    const output = vi.mocked(mockFs.writeFileSync).mock.calls[0][1] as string;
+    expect(output).not.toMatch(/^---/);
+  });
+
+  it('should handle srcPath containing colons correctly', () => {
+    mapping.from = 'common:path/with:colon/file.md';
+    const sourceContent = '# Content';
+    vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
+
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
+
+    expect(mockFs.readFileSync).toHaveBeenCalledWith('/cache/common/path/with:colon/file.md');
+    const output = vi.mocked(mockFs.writeFileSync).mock.calls[0][1] as string;
+    expect(output).toContain('path/with:colon/file.md');
+  });
+
+  it('should place frontmatter before the GENERATED comment', () => {
+    const sourceContent = '# Content';
+    vi.mocked(mockFs.readFileSync).mockReturnValue(sourceContent);
+
+    compileMapping(mapping, sourcePaths, sources, 'site-a', graph, mockFs);
+
+    const output = vi.mocked(mockFs.writeFileSync).mock.calls[0][1] as string;
+    const frontmatterEnd = output.indexOf('---\n', 4); // closing ---
+    const commentStart = output.indexOf('<!-- GENERATED BY docs-sync');
+    expect(frontmatterEnd).toBeLessThan(commentStart);
   });
 });
 
@@ -284,5 +384,62 @@ describe('deleteMapping', () => {
 
     expect(mockFs.unlinkSync).toHaveBeenCalledWith('docs/output.md');
     expect(graph.reverse.has('common:source.md')).toBe(false);
+  });
+});
+
+describe('normalizeRepoUrl', () => {
+  it('should strip .git from HTTPS URL', () => {
+    expect(normalizeRepoUrl('https://github.com/org/repo.git')).toBe('https://github.com/org/repo');
+  });
+
+  it('should leave HTTPS URL without .git unchanged', () => {
+    expect(normalizeRepoUrl('https://gitcode.com/dcloud/docs-common')).toBe('https://gitcode.com/dcloud/docs-common');
+  });
+
+  it('should convert ssh:// URL with port to HTTPS', () => {
+    expect(normalizeRepoUrl('ssh://git@git.dcloud.io:2222/liuxiaohang/docs-common.git'))
+      .toBe('https://git.dcloud.io/liuxiaohang/docs-common');
+  });
+
+  it('should convert ssh:// URL without port to HTTPS', () => {
+    expect(normalizeRepoUrl('ssh://git@github.com/org/repo.git'))
+      .toBe('https://github.com/org/repo');
+  });
+
+  it('should convert git@host:path shorthand to HTTPS', () => {
+    expect(normalizeRepoUrl('git@github.com:org/repo.git'))
+      .toBe('https://github.com/org/repo');
+  });
+});
+
+describe('buildEditLink', () => {
+  it('should build GitHub-style edit link', () => {
+    expect(buildEditLink('https://github.com/org/repo.git', 'main', 'docs/guide.md'))
+      .toBe('https://github.com/org/repo/edit/main/docs/guide.md');
+  });
+
+  it('should build GitCode edit link', () => {
+    expect(buildEditLink('https://gitcode.com/dcloud/docs-common.git', 'main', 'ai/vibe-partner.md'))
+      .toBe('https://gitcode.com/dcloud/docs-common/edit/main/ai/vibe-partner.md');
+  });
+
+  it('should build Gitee edit link', () => {
+    expect(buildEditLink('https://gitee.com/org/repo.git', 'master', 'README.md'))
+      .toBe('https://gitee.com/org/repo/edit/master/README.md');
+  });
+
+  it('should build edit link from SSH URL with port (gitcode scenario)', () => {
+    expect(buildEditLink('ssh://git@git.dcloud.io:2222/liuxiaohang/docs-common.git', 'main', 'guides/install.md'))
+      .toBe('https://git.dcloud.io/liuxiaohang/docs-common/edit/main/guides/install.md');
+  });
+
+  it('should build GitLab /-/edit link', () => {
+    expect(buildEditLink('https://gitlab.com/org/repo.git', 'main', 'src/file.md'))
+      .toBe('https://gitlab.com/org/repo/-/edit/main/src/file.md');
+  });
+
+  it('should build Bitbucket edit link', () => {
+    expect(buildEditLink('https://bitbucket.org/org/repo.git', 'main', 'docs/file.md'))
+      .toBe('https://bitbucket.org/org/repo/src/main/docs/file.md?mode=edit&spa=0&at=main&fileviewer=file-view-default');
   });
 });

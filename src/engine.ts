@@ -27,7 +27,7 @@ export async function syncAll(config: DocsSyncConfig) {
   let successCount = 0;
   for (const m of config.mappings) {
     try {
-      compileMapping(m, sourcePaths, config.site, graph, fs);
+      compileMapping(m, sourcePaths, config.sources, config.site, graph, fs);
       successCount++;
     } catch (error) {
       errors.push(`${m.from}: ${error}`);
@@ -74,7 +74,7 @@ export async function watch(config: DocsSyncConfig) {
   logger.info(`Compiling ${config.mappings.length} mapping(s)...`);
   for (const m of config.mappings) {
     try {
-      compileMapping(m, sourcePaths, config.site, graph, fs);
+      compileMapping(m, sourcePaths, config.sources, config.site, graph, fs);
     } catch (error) {
       logger.debug(`Skipping failed mapping: ${m.from}`);
     }
@@ -131,7 +131,7 @@ export async function watch(config: DocsSyncConfig) {
     for (const m of config.mappings) {
       if (affected.has(m.from)) {
         try {
-          compileMapping(m, sourcePaths, config.site, graph, fs);
+          compileMapping(m, sourcePaths, config.sources, config.site, graph, fs);
         } catch (error) {
           // 错误已记录，继续监视其他文件
           logger.debug(`Skipping failed mapping: ${m.from}`);
