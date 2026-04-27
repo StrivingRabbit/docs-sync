@@ -2,6 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { resolveIncludes } from '../include';
 import type { FsOps } from '../fs/types';
 
+vi.mock('../logger', () => ({
+  logger: {
+    info: vi.fn(),
+    success: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 describe('resolveIncludes', () => {
   let mockFs: FsOps;
   let deps: Set<string>;
@@ -19,6 +29,7 @@ describe('resolveIncludes', () => {
       writeFileSync: vi.fn(),
       ensureDir: vi.fn(),
       stat: vi.fn(),
+      unlinkSync: vi.fn(),
     };
   });
 
