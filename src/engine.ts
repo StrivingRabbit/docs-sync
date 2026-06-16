@@ -7,6 +7,25 @@ import { realFs } from './fs/realFs';
 import { dryRunFs } from './fs/dryRunFs';
 import { logger } from './logger';
 
+export function getAffectedMappings(
+  sourceId: string,
+  mappings: DocsSyncConfig['mappings'],
+  graph: DepGraph,
+  includeDirect = true
+) {
+  const affected = graph.affected(sourceId);
+
+  if (includeDirect) {
+    for (const mapping of mappings) {
+      if (mapping.from === sourceId) {
+        affected.add(mapping.from);
+      }
+    }
+  }
+
+  return affected;
+}
+
 export async function syncAll(config: DocsSyncConfig) {
   const graph = new DepGraph();
   const fs = config.dryRun ? dryRunFs : realFs;
@@ -121,7 +140,7 @@ export async function watch(config: DocsSyncConfig) {
     }
 
     // 查找受影响的 mappings（包括通过 include 间接依赖的）
-    const affected = graph.affected(sourceId);
+    const affected = getAffectedMappings(sourceId, config.mappings, graph, eventType !== 'unlink');
 
     if (affected.size > 0) {
       logger.info(`Recompiling ${affected.size} affected mapping(s)...`);
