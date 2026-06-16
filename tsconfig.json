@@ -2,7 +2,6 @@
 	"include": ["src", "bin", "package.json", "docs-sync.config.ts"],
 	"exclude": ["node_modules", "dist", "**/__tests__", "**/*.test.ts"],
 	"compilerOptions": {
-		"ignoreDeprecations": "6.0" /* Suppress reporting of deprecated APIs. */,
 		/* Visit https://aka.ms/tsconfig to read more about this file */
 		/* Projects */
 		// "incremental": true,                              /* Save .tsbuildinfo files to allow for incremental compilation of projects. */
