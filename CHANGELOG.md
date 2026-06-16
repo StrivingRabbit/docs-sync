@@ -1,5 +1,11 @@
 # docs-sync-cli
 
+## 1.0.5
+
+### Patch Changes
+
+- fix: watch direct local source changes
+
 ## 1.0.4
 
 ### Patch Changes
